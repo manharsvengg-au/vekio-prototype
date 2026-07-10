@@ -6,15 +6,11 @@ import { useParams } from "next/navigation";
 import {
   BadgeCheck,
   BriefcaseBusiness,
-  CalendarDays,
-  CheckCircle2,
-  ClipboardCheck,
-  FileCheck2,
   Mail,
   MapPin,
-  ShieldCheck,
-  Star,
-  Upload,
+  Phone,
+  Send,
+  UserRound,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
@@ -26,6 +22,7 @@ type Tradie = {
   phone: string | null;
   email: string | null;
   slug: string | null;
+  profile_photo_url: string | null;
 };
 
 export default function TradieProfilePage() {
@@ -34,14 +31,16 @@ export default function TradieProfilePage() {
 
   const [tradie, setTradie] = useState<Tradie | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugError, setDebugError] = useState<any>(null);
+  const [debugError, setDebugError] = useState<unknown>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [location, setLocation] = useState("");
   const [jobDetails, setJobDetails] = useState("");
+
   const [enquiryStatus, setEnquiryStatus] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     async function loadTradie() {
@@ -49,12 +48,14 @@ export default function TradieProfilePage() {
 
       const { data, error } = await supabase
         .from("tradies")
-        .select("*")
+        .select(
+          "id, full_name, business_name, trade, phone, email, slug, profile_photo_url"
+        )
         .eq("slug", slug)
         .single();
 
       if (error) {
-        console.error(error);
+        console.error("Tradie loading error:", error);
         setDebugError(error);
         setTradie(null);
       } else {
@@ -69,61 +70,97 @@ export default function TradieProfilePage() {
     }
   }, [slug]);
 
-async function sendEnquiry() {
-  if (!tradie) return;
+  async function sendEnquiry() {
+    if (!tradie || isSending) {
+      return;
+    }
 
-  setEnquiryStatus("Sending...");
+    if (!customerName.trim()) {
+      setEnquiryStatus("Please enter your name.");
+      return;
+    }
 
-  const { error } = await supabase.from("enquiries").insert({
-    tradie_id: tradie.id,
-    tradie_slug: tradie.slug,
-    customer_name: customerName,
-    phone: customerPhone,
-    email: customerEmail,
-    location,
-    job_details: jobDetails,
-    status: "new",
-  });
+    if (!customerPhone.trim() && !customerEmail.trim()) {
+      setEnquiryStatus("Please enter a phone number or email address.");
+      return;
+    }
 
-  if (error) {
-    console.error(error);
-    setEnquiryStatus("Something went wrong. Check console.");
-    return;
+    if (!jobDetails.trim()) {
+      setEnquiryStatus("Please describe the job.");
+      return;
+    }
+
+    setIsSending(true);
+    setEnquiryStatus("Sending enquiry...");
+
+    try {
+      const { error: enquiryError } = await supabase
+        .from("enquiries")
+        .insert({
+          tradie_id: tradie.id,
+          tradie_slug: tradie.slug,
+          customer_name: customerName.trim(),
+          phone: customerPhone.trim(),
+          email: customerEmail.trim(),
+          location: location.trim(),
+          job_details: jobDetails.trim(),
+          status: "new",
+        });
+
+      if (enquiryError) {
+        throw enquiryError;
+      }
+
+      const emailResponse = await fetch("/api/send-enquiry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tradieEmail: tradie.email,
+          tradieName: tradie.full_name,
+          businessName: tradie.business_name,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerEmail: customerEmail.trim(),
+          location: location.trim(),
+          jobDetails: jobDetails.trim(),
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        setEnquiryStatus(
+          "Enquiry saved successfully, but the email notification failed."
+        );
+        setIsSending(false);
+        return;
+      }
+
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerEmail("");
+      setLocation("");
+      setJobDetails("");
+
+      setEnquiryStatus("Enquiry sent successfully.");
+    } catch (error) {
+      console.error("Enquiry error:", error);
+      setEnquiryStatus("Something went wrong. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
   }
-
-  const emailResponse = await fetch("/api/send-enquiry", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      tradieEmail: tradie.email,
-      tradieName: tradie.full_name,
-      businessName: tradie.business_name,
-      customerName,
-      customerPhone,
-      customerEmail,
-      location,
-      jobDetails,
-    }),
-  });
-
-  if (!emailResponse.ok) {
-    setEnquiryStatus("Enquiry saved, but email failed.");
-    return;
-  }
-
-  setCustomerName("");
-  setCustomerPhone("");
-  setCustomerEmail("");
-  setLocation("");
-  setJobDetails("");
-  setEnquiryStatus("Enquiry sent successfully.");
-}
 
   if (loading) {
     return (
-      <main style={{ padding: 40, color: "white", background: "#07111f" }}>
+      <main
+        style={{
+          minHeight: "100vh",
+          padding: 40,
+          color: "white",
+          background: "#07111f",
+        }}
+      >
         <h1>Loading Vekio profile...</h1>
       </main>
     );
@@ -131,12 +168,25 @@ async function sendEnquiry() {
 
   if (!tradie) {
     return (
-      <main style={{ padding: 40, color: "white", background: "#07111f" }}>
-        <h1>Debug: Tradie not found</h1>
+      <main
+        style={{
+          minHeight: "100vh",
+          padding: 40,
+          color: "white",
+          background: "#07111f",
+        }}
+      >
+        <h1>Vekio profile not found</h1>
+
         <p>
-          <strong>Slug searched:</strong> {slug}
+          We could not find a professional with the profile address:
+          <br />
+          <strong>{slug}</strong>
         </p>
-        <pre>{JSON.stringify(debugError, null, 2)}</pre>
+
+        <pre style={{ whiteSpace: "pre-wrap" }}>
+          {JSON.stringify(debugError, null, 2)}
+        </pre>
       </main>
     );
   }
@@ -145,8 +195,10 @@ async function sendEnquiry() {
   const fullName = tradie.full_name || "Professional";
   const firstName = fullName.split(" ")[0] || "Professional";
   const trade = tradie.trade || "Professional";
+
   const initials = businessName
     .split(" ")
+    .filter(Boolean)
     .map((word) => word[0])
     .join("")
     .slice(0, 2)
@@ -170,117 +222,168 @@ async function sendEnquiry() {
         <section className="tradie-v3-hero card">
           <div className="hero-glow" />
 
-          <div className="tradie-v3-avatar">{initials}</div>
+          <div
+            className="tradie-v3-avatar"
+            style={{
+              padding: 0,
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {tradie.profile_photo_url ? (
+              <img
+                src={tradie.profile_photo_url}
+                alt={`${fullName} profile`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              initials
+            )}
+          </div>
 
           <div className="tradie-v3-hero-copy">
             <div className="verified-pill">
               <BadgeCheck size={16} />
-              Verified Vekio ID
+              Vekio ID
             </div>
 
             <h1>{businessName}</h1>
+
             <p>
-              {trade} serving Perth metro. Contact {fullName} directly through
-              this verified Vekio profile.
+              Contact {fullName} directly through this Vekio professional
+              profile.
             </p>
 
             <div className="v3-badges">
               <span>
-                <Star size={16} /> 4.9 rating
+                <UserRound size={16} />
+                {fullName}
               </span>
+
               <span>
-                <MapPin size={16} /> Perth, WA
+                <BriefcaseBusiness size={16} />
+                {trade}
               </span>
-              <span>
-                <CalendarDays size={16} /> Replies within 24h
-              </span>
-              <span>
-                <ClipboardCheck size={16} /> 42 completed jobs
-              </span>
+
+              {tradie.phone && (
+                <span>
+                  <Phone size={16} />
+                  {tradie.phone}
+                </span>
+              )}
+
+              {tradie.email && (
+                <span>
+                  <Mail size={16} />
+                  {tradie.email}
+                </span>
+              )}
             </div>
           </div>
 
           <div className="v3-share-card">
-            <strong>vekio.com/{tradie.slug}</strong>
-            <span>One link. Complete professional proof.</span>
+            <strong>vekio.com.au/tradie/{tradie.slug}</strong>
+            <span>One profile. One direct enquiry point.</span>
           </div>
         </section>
 
         <section className="tradie-v3-grid">
           <aside className="v3-enquiry card">
             <div className="eyebrow">Request a quote</div>
+
             <h2>Tell {firstName} what you need.</h2>
+
             <p>
-              Fill the form once. {firstName} gets notified and can reply
+              Send the details once. {firstName} will receive the enquiry
               directly.
             </p>
 
-            <form className="enquiry-form">
+            <form
+              className="enquiry-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                sendEnquiry();
+              }}
+            >
               <div className="field">
                 <label>Your name</label>
+
                 <input
                   type="text"
                   placeholder="Your name"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  onChange={(event) => setCustomerName(event.target.value)}
                 />
               </div>
 
               <div className="field">
                 <label>Phone</label>
+
                 <input
                   type="tel"
                   placeholder="0412 345 678"
                   value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  onChange={(event) => setCustomerPhone(event.target.value)}
                 />
               </div>
 
               <div className="field">
                 <label>Email</label>
+
                 <input
                   type="email"
                   placeholder="you@example.com"
                   value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  onChange={(event) => setCustomerEmail(event.target.value)}
                 />
               </div>
 
               <div className="field">
-                <label>Suburb / location</label>
+                <label>Suburb or location</label>
+
                 <input
                   type="text"
-                  placeholder="Brabham, WA"
+                  placeholder="Suburb, WA"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(event) => setLocation(event.target.value)}
                 />
               </div>
 
               <div className="field">
                 <label>Job details</label>
+
                 <textarea
-                  placeholder="Describe the job..."
+                  placeholder="Describe the work you need..."
                   value={jobDetails}
-                  onChange={(e) => setJobDetails(e.target.value)}
+                  onChange={(event) => setJobDetails(event.target.value)}
                 />
               </div>
 
-              <button className="upload-box" type="button">
-                <Upload size={18} />
-                Upload site photos
-              </button>
-
               <button
                 className="btn btn-primary btn-wide"
-                type="button"
-                onClick={sendEnquiry}
+                type="submit"
+                disabled={isSending}
+                style={{
+                  opacity: isSending ? 0.65 : 1,
+                  cursor: isSending ? "not-allowed" : "pointer",
+                }}
               >
-                <Mail size={18} />
-                Send enquiry
+                <Send size={18} />
+                {isSending ? "Sending..." : "Send enquiry"}
               </button>
 
               {enquiryStatus && (
-                <p style={{ textAlign: "center", color: "var(--brand-2)" }}>
+                <p
+                  style={{
+                    textAlign: "center",
+                    color: "var(--brand-2)",
+                  }}
+                >
                   {enquiryStatus}
                 </p>
               )}
@@ -288,129 +391,105 @@ async function sendEnquiry() {
           </aside>
 
           <section className="v3-content">
-            <div className="v3-proof-strip">
-              <div className="card proof-stat">
-                <strong>12</strong>
-                <span>Verified documents</span>
-              </div>
-              <div className="card proof-stat">
-                <strong>8+</strong>
-                <span>Years experience</span>
-              </div>
-              <div className="card proof-stat">
-                <strong>42</strong>
-                <span>Completed jobs</span>
-              </div>
-            </div>
-
             <div className="card v3-about">
               <h2>About {firstName}</h2>
+
               <p>
-                {businessName} provides tidy, reliable and verified {trade}
-                services across Perth. Clear communication, transparent scope
-                and practical advice from enquiry to completion.
+                <strong>{businessName}</strong>
+                <br />
+                {trade}
               </p>
-            </div>
 
-            <div className="card">
-              <h2>Recent projects</h2>
-              <p>Site work, completed jobs and proof of capability.</p>
-
-              <div className="v3-gallery">
-                <div className="v3-photo photo-a">
-                  <span>Switchboard upgrade</span>
-                </div>
-                <div className="v3-photo photo-b">
-                  <span>Warehouse lighting</span>
-                </div>
-                <div className="v3-photo photo-c">
-                  <span>Kitchen renovation</span>
-                </div>
-                <div className="v3-photo photo-d">
-                  <span>EV charger install</span>
-                </div>
-              </div>
+              <p>
+                This Vekio profile allows customers to send work enquiries
+                directly to {fullName}.
+              </p>
             </div>
 
             <div className="v3-two">
               <div className="card">
-                <h2>Services</h2>
-                <div className="v3-list">
-                  <span>
-                    <CheckCircle2 size={18} /> Switchboard upgrades
-                  </span>
-                  <span>
-                    <CheckCircle2 size={18} /> Lighting installation
-                  </span>
-                  <span>
-                    <CheckCircle2 size={18} /> Power points
-                  </span>
-                  <span>
-                    <CheckCircle2 size={18} /> Fault finding
-                  </span>
-                  <span>
-                    <CheckCircle2 size={18} /> Renovation works
-                  </span>
-                </div>
-              </div>
-
-              <div className="card">
-                <h2>Verified documents</h2>
+                <h2>Professional details</h2>
 
                 <div className="credential">
-                  <FileCheck2 size={18} />
-                  <div>
-                    <strong>Trade Licence</strong>
-                    <span>Verified by Vekio</span>
-                  </div>
-                </div>
+                  <UserRound size={18} />
 
-                <div className="credential">
-                  <ShieldCheck size={18} />
                   <div>
-                    <strong>Public Liability Insurance</strong>
-                    <span>Verified by Vekio</span>
+                    <strong>Contact person</strong>
+                    <span>{fullName}</span>
                   </div>
                 </div>
 
                 <div className="credential">
                   <BriefcaseBusiness size={18} />
+
                   <div>
-                    <strong>ABN</strong>
-                    <span>Verified by Vekio</span>
+                    <strong>Trade or profession</strong>
+                    <span>{trade}</span>
+                  </div>
+                </div>
+
+                {tradie.phone && (
+                  <div className="credential">
+                    <Phone size={18} />
+
+                    <div>
+                      <strong>Phone</strong>
+                      <span>{tradie.phone}</span>
+                    </div>
+                  </div>
+                )}
+
+                {tradie.email && (
+                  <div className="credential">
+                    <Mail size={18} />
+
+                    <div>
+                      <strong>Email</strong>
+                      <span>{tradie.email}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="card">
+                <h2>Vekio profile</h2>
+
+                <div className="credential">
+                  <BadgeCheck size={18} />
+
+                  <div>
+                    <strong>Vekio ID created</strong>
+                    <span>Public professional profile</span>
+                  </div>
+                </div>
+
+                <div className="credential">
+                  <MapPin size={18} />
+
+                  <div>
+                    <strong>Service area</strong>
+                    <span>Ask the tradie directly</span>
+                  </div>
+                </div>
+
+                <div className="credential">
+                  <Mail size={18} />
+
+                  <div>
+                    <strong>Direct enquiries</strong>
+                    <span>Delivered to the tradie</span>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="card">
-              <h2>Reviews</h2>
+              <h2>Need work done?</h2>
 
-              <div className="v3-reviews">
-                <div className="v3-review">
-                  <div className="review-avatar">S</div>
-                  <div>
-                    <strong>★★★★★</strong>
-                    <p>
-                      Professional, punctual and explained the work clearly
-                      before starting.
-                    </p>
-                    <span>Sarah · Brabham</span>
-                  </div>
-                </div>
-
-                <div className="v3-review">
-                  <div className="review-avatar">M</div>
-                  <div>
-                    <strong>★★★★★</strong>
-                    <p>
-                      Great communication and a very clean finish. Would happily
-                      use again.
-                    </p>
-                    <span>Michael · Midland</span>
-                  </div>
-                </div>
-              </div>
+              <p>
+                Use the enquiry form to send your job details directly to{" "}
+                {firstName}.
+              </p>
             </div>
           </section>
         </section>

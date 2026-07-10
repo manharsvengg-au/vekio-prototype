@@ -31,7 +31,7 @@ export default function LoginPage() {
             <input type="password" placeholder="••••••••" />
           </div>
           <button className="btn btn-primary btn-wide" type="button">Continue <ArrowRight size={18}/></button>
-          <p style={{textAlign:'center'}}>New to Vekio? <Link href="/tradie/John Smith" style={{color:'var(--brand-2)'}}>Preview a profile</Link></p>
+          <p style={{textAlign:'center'}}>New to Vekio? <Link href="/register" style={{color:'var(--brand-2)'}}>Join for free</Link></p>
         </form>
       </section>
     </main>

@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ShieldCheck, UserRoundPlus } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  ShieldCheck,
+  UserRoundPlus,
+} from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 function makeSlug(value: string) {
@@ -22,30 +27,136 @@ export default function RegisterPage() {
   const [trade, setTrade] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+
   const [status, setStatus] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  async function handleCreateAccount() {
-    setStatus("Saving...");
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
 
-    const slug = makeSlug(businessName || fullName);
-
-    const { error } = await supabase.from("tradies").insert({
-      full_name: fullName,
-      business_name: businessName,
-      trade,
-      phone,
-      email,
-      slug,
-    });
-
-    if (error) {
-      console.error(error);
-      setStatus("Something went wrong. Check console.");
+    if (!file) {
       return;
     }
 
-    setStatus("Vekio ID created successfully.");
-    router.push(`/dashboard/${slug}`);
+    if (!file.type.startsWith("image/")) {
+      setStatus("Please choose an image file.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setStatus("Profile photo must be smaller than 5 MB.");
+      return;
+    }
+
+    setProfilePhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setStatus("");
+  }
+
+  async function uploadProfilePhoto(slug: string) {
+    if (!profilePhoto) {
+      return null;
+    }
+
+    const fileExtension =
+      profilePhoto.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    const uniqueFileName = `${slug}-${Date.now()}.${fileExtension}`;
+    const filePath = `profiles/${uniqueFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("tradie-profile-photos")
+      .upload(filePath, profilePhoto, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from("tradie-profile-photos")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  }
+
+  async function handleCreateAccount() {
+    if (isSaving) {
+      return;
+    }
+
+    if (!fullName.trim()) {
+      setStatus("Please enter your full name.");
+      return;
+    }
+
+    if (!businessName.trim()) {
+      setStatus("Please enter your business name.");
+      return;
+    }
+
+    if (!trade.trim()) {
+      setStatus("Please enter your trade or profession.");
+      return;
+    }
+
+    if (!phone.trim()) {
+      setStatus("Please enter your phone number.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setStatus("Please enter your email address.");
+      return;
+    }
+
+    if (!profilePhoto) {
+      setStatus("Please add a profile photo.");
+      return;
+    }
+
+    setIsSaving(true);
+    setStatus("Uploading profile photo...");
+
+    try {
+      const slug = makeSlug(businessName || fullName);
+
+      if (!slug) {
+        setStatus("Please enter a valid business name or full name.");
+        setIsSaving(false);
+        return;
+      }
+
+      const profilePhotoUrl = await uploadProfilePhoto(slug);
+
+      setStatus("Creating your Vekio ID...");
+
+      const { error: insertError } = await supabase.from("tradies").insert({
+        full_name: fullName.trim(),
+        business_name: businessName.trim(),
+        trade: trade.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        slug,
+        profile_photo_url: profilePhotoUrl,
+      });
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setStatus("Vekio ID created successfully.");
+      router.push(`/dashboard/${slug}`);
+    } catch (error) {
+      console.error("Registration error:", error);
+      setStatus("Something went wrong. Check the browser console.");
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -58,7 +169,9 @@ export default function RegisterPage() {
 
         <div style={{ marginTop: 70 }}>
           <div className="eyebrow">Create your Vekio ID</div>
+
           <h1>Your professional identity starts here.</h1>
+
           <p>
             Create one trusted profile to share your licences, credentials,
             reviews, availability and enquiries.
@@ -81,57 +194,119 @@ export default function RegisterPage() {
       </section>
 
       <section className="login-right">
-        <form className="card form-card">
+        <form
+          className="card form-card"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleCreateAccount();
+          }}
+        >
           <h2>Create Account</h2>
           <p>Start building your Vekio profile.</p>
 
           <div className="field">
+            <label>Profile photo</label>
+
+            <label
+              htmlFor="profile-photo"
+              style={{
+                minHeight: 150,
+                border: "2px dashed rgba(255, 255, 255, 0.18)",
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "column",
+                gap: 10,
+                cursor: "pointer",
+                overflow: "hidden",
+                textAlign: "center",
+                padding: 16,
+              }}
+            >
+              {photoPreview ? (
+                <img
+                  src={photoPreview}
+                  alt="Profile preview"
+                  style={{
+                    width: 120,
+                    height: 120,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <>
+                  <Camera size={32} />
+                  <strong>Add profile photo</strong>
+                  <span style={{ opacity: 0.7 }}>
+                    Upload a clear photo of yourself
+                  </span>
+                </>
+              )}
+            </label>
+
+            <input
+              id="profile-photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              style={{ display: "none" }}
+            />
+          </div>
+
+          <div className="field">
             <label>Full name</label>
+
             <input
               type="text"
               placeholder="John Smith"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(event) => setFullName(event.target.value)}
             />
           </div>
 
           <div className="field">
             <label>Business name</label>
+
             <input
               type="text"
               placeholder="John Smith Services"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              onChange={(event) => setBusinessName(event.target.value)}
             />
           </div>
 
           <div className="field">
             <label>Trade or profession</label>
+
             <input
               type="text"
               placeholder="Electrician, carpenter, engineer..."
               value={trade}
-              onChange={(e) => setTrade(e.target.value)}
+              onChange={(event) => setTrade(event.target.value)}
             />
           </div>
 
           <div className="field">
             <label>Phone</label>
+
             <input
               type="tel"
               placeholder="0412 345 678"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(event) => setPhone(event.target.value)}
             />
           </div>
 
           <div className="field">
             <label>Email address</label>
+
             <input
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
             />
           </div>
 
@@ -142,14 +317,24 @@ export default function RegisterPage() {
 
           <button
             className="btn btn-primary btn-wide"
-            type="button"
-            onClick={handleCreateAccount}
+            type="submit"
+            disabled={isSaving}
+            style={{
+              opacity: isSaving ? 0.65 : 1,
+              cursor: isSaving ? "not-allowed" : "pointer",
+            }}
           >
-            Create Vekio ID <ArrowRight size={18} />
+            {isSaving ? "Creating Vekio ID..." : "Create Vekio ID"}
+            {!isSaving && <ArrowRight size={18} />}
           </button>
 
           {status && (
-            <p style={{ textAlign: "center", color: "var(--brand-2)" }}>
+            <p
+              style={{
+                textAlign: "center",
+                color: "var(--brand-2)",
+              }}
+            >
               {status}
             </p>
           )}

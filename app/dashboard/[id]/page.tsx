@@ -25,6 +25,7 @@ type Tradie = {
   phone: string | null;
   email: string | null;
   slug: string | null;
+  profile_photo_url: string | null;
 };
 
 export default function DashboardPage() {
@@ -86,11 +87,20 @@ export default function DashboardPage() {
   const trade = tradie.trade || "Professional";
   const firstName = fullName.split(" ")[0] || "Professional";
 
+  const initials = businessName
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   const completionItems = [
     { label: "Basic profile created", done: true },
     { label: "Public profile live", done: true },
     { label: "Phone added", done: Boolean(tradie.phone) },
     { label: "Email added", done: Boolean(tradie.email) },
+    { label: "Profile photo added", done: Boolean(tradie.profile_photo_url) },
     { label: "Licence uploaded", done: false },
     { label: "Insurance uploaded", done: false },
     { label: "Project photos added", done: false },
@@ -98,6 +108,7 @@ export default function DashboardPage() {
   ];
 
   const completeCount = completionItems.filter((item) => item.done).length;
+
   const completionPercent = Math.round(
     (completeCount / completionItems.length) * 100
   );
@@ -120,13 +131,28 @@ export default function DashboardPage() {
         <section className="tradie-v3-hero card">
           <div className="hero-glow" />
 
-          <div className="tradie-v3-avatar">
-            {businessName
-              .split(" ")
-              .map((word) => word[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
+          <div
+            className="tradie-v3-avatar"
+            style={{
+              padding: 0,
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {tradie.profile_photo_url ? (
+              <img
+                src={tradie.profile_photo_url}
+                alt={`${fullName} profile`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              initials
+            )}
           </div>
 
           <div className="tradie-v3-hero-copy">
@@ -136,6 +162,7 @@ export default function DashboardPage() {
             </div>
 
             <h1>Welcome, {firstName}</h1>
+
             <p>
               Manage your Vekio ID for <strong>{businessName}</strong>.
             </p>
@@ -144,12 +171,15 @@ export default function DashboardPage() {
               <span>
                 <UserRound size={16} /> {fullName}
               </span>
+
               <span>
                 <ClipboardCheck size={16} /> {trade}
               </span>
+
               <span>
                 <Phone size={16} /> {tradie.phone || "Phone missing"}
               </span>
+
               <span>
                 <Mail size={16} /> {tradie.email || "Email missing"}
               </span>
@@ -165,7 +195,9 @@ export default function DashboardPage() {
         <section className="tradie-v3-grid">
           <aside className="v3-enquiry card">
             <div className="eyebrow">Profile completion</div>
+
             <h2>{completionPercent}% complete</h2>
+
             <p>
               Complete the trust layer before sharing your profile widely.
             </p>
@@ -215,10 +247,12 @@ export default function DashboardPage() {
                 <strong>0</strong>
                 <span>New enquiries</span>
               </div>
+
               <div className="card proof-stat">
                 <strong>0</strong>
                 <span>Documents uploaded</span>
               </div>
+
               <div className="card proof-stat">
                 <strong>1</strong>
                 <span>Public profile live</span>
@@ -227,6 +261,7 @@ export default function DashboardPage() {
 
             <div className="card v3-about">
               <h2>Business details</h2>
+
               <p>
                 <strong>Business:</strong> {businessName}
                 <br />
@@ -274,14 +309,21 @@ export default function DashboardPage() {
 
                 <div className="credential">
                   <ImagePlus size={18} />
+
                   <div>
                     <strong>Profile photo</strong>
-                    <span>Not uploaded</span>
+
+                    <span>
+                      {tradie.profile_photo_url
+                        ? "Uploaded"
+                        : "Not uploaded"}
+                    </span>
                   </div>
                 </div>
 
                 <div className="credential">
                   <ImagePlus size={18} />
+
                   <div>
                     <strong>Project gallery</strong>
                     <span>Add proof of work</span>
@@ -290,6 +332,7 @@ export default function DashboardPage() {
 
                 <div className="credential">
                   <Star size={18} />
+
                   <div>
                     <strong>Reviews</strong>
                     <span>No reviews yet</span>
@@ -300,16 +343,20 @@ export default function DashboardPage() {
 
             <div className="card">
               <h2>Next actions</h2>
+
               <div className="v3-list">
                 <span>
                   <FileCheck2 size={18} /> Upload trade licence
                 </span>
+
                 <span>
                   <ShieldCheck size={18} /> Upload insurance certificate
                 </span>
+
                 <span>
                   <ImagePlus size={18} /> Add first project photo
                 </span>
+
                 <span>
                   <Link2 size={18} /> Copy and share public Vekio link
                 </span>
