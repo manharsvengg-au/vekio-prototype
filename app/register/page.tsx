@@ -27,7 +27,7 @@ export default function RegisterPage() {
   const [trade, setTrade] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
 
@@ -142,6 +142,7 @@ export default function RegisterPage() {
         trade: trade.trim(),
         phone: phone.trim(),
         email: email.trim(),
+        marketing_consent: marketingConsent,
         slug,
         profile_photo_url: profilePhotoUrl,
       });
@@ -310,6 +311,40 @@ export default function RegisterPage() {
             />
           </div>
 
+<div
+  style={{
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    marginTop: 4,
+  }}
+>
+  <input
+    id="marketing-consent"
+    type="checkbox"
+    checked={marketingConsent}
+    onChange={(event) => setMarketingConsent(event.target.checked)}
+    style={{
+      marginTop: 4,
+      width: 18,
+      height: 18,
+      cursor: "pointer",
+    }}
+  />
+
+  <label
+    htmlFor="marketing-consent"
+    style={{
+      cursor: "pointer",
+      lineHeight: 1.4,
+      fontSize: 14,
+      opacity: 0.85,
+    }}
+  >
+    Send me Vekio tips, updates and opportunities by email. I can unsubscribe anytime.
+  </label>
+</div>
+          
           <div className="field">
             <label>Password</label>
             <input type="password" placeholder="••••••••" />
