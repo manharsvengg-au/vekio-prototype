@@ -11,6 +11,10 @@ import {
   Phone,
   Send,
   UserRound,
+  ShieldCheck,
+  FileCheck2,
+  Images,
+  LogOut,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
@@ -23,6 +27,9 @@ type Tradie = {
   email: string | null;
   slug: string | null;
   profile_photo_url: string | null;
+  trade_licence_path: string | null;
+  insurance_path: string | null;
+  project_photo_urls: string[] | null;
 };
 
 export default function TradieProfilePage() {
@@ -32,6 +39,8 @@ export default function TradieProfilePage() {
   const [tradie, setTradie] = useState<Tradie | null>(null);
   const [loading, setLoading] = useState(true);
   const [debugError, setDebugError] = useState<unknown>(null);
+  const [dashboardHref, setDashboardHref] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -49,7 +58,7 @@ export default function TradieProfilePage() {
       const { data, error } = await supabase
         .from("tradies")
         .select(
-          "id, full_name, business_name, trade, phone, email, slug, profile_photo_url"
+          "id, full_name, business_name, trade, phone, email, slug, profile_photo_url, trade_licence_path, insurance_path, project_photo_urls"
         )
         .eq("slug", slug)
         .single();
@@ -69,6 +78,50 @@ export default function TradieProfilePage() {
       loadTradie();
     }
   }, [slug]);
+
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadNavigationState() {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!alive) return;
+
+      if (!user) {
+        setDashboardHref(null);
+        setAuthChecked(true);
+        return;
+      }
+
+      const { data: ownProfile } = await supabase
+        .from("tradies")
+        .select("slug")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+      if (!alive) return;
+      setDashboardHref(ownProfile?.slug ? `/dashboard/${ownProfile.slug}` : null);
+      setAuthChecked(true);
+    }
+
+    loadNavigationState();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      loadNavigationState();
+    });
+
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+  }
 
   async function sendEnquiry() {
     if (!tradie || isSending) {
@@ -207,14 +260,24 @@ export default function TradieProfilePage() {
   return (
     <main className="page-shell">
       <nav className="nav">
-        <Link className="logo" href="/">
+        <Link className="logo" href={dashboardHref || "/"}>
           <span className="logo-mark">V</span>
           <span>Vekio</span>
         </Link>
 
         <div className="nav-links">
-          <Link href="/">Home</Link>
-          <Link href="/login">Login</Link>
+          <Link href={dashboardHref || "/"}>{dashboardHref ? "Dashboard" : "Home"}</Link>
+          {authChecked && dashboardHref ? (
+            <button
+              type="button"
+              onClick={logout}
+              style={{ background: "none", border: 0, padding: 0, color: "inherit", cursor: "pointer", font: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <LogOut size={15} /> Logout
+            </button>
+          ) : (
+            <Link href="/login">Login</Link>
+          )}
         </div>
       </nav>
 
@@ -480,6 +543,64 @@ export default function TradieProfilePage() {
                     <span>Delivered to the tradie</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="v3-two">
+              <div className="card">
+                <h2>Trust &amp; verification</h2>
+
+                <div className="credential">
+                  <FileCheck2 size={18} />
+                  <div>
+                    <strong>Trade licence</strong>
+                    <span>{tradie.trade_licence_path ? "Provided to Vekio" : "Not provided"}</span>
+                  </div>
+                </div>
+
+                <div className="credential">
+                  <ShieldCheck size={18} />
+                  <div>
+                    <strong>Insurance</strong>
+                    <span>{tradie.insurance_path ? "Provided to Vekio" : "Not provided"}</span>
+                  </div>
+                </div>
+
+                <div className="credential">
+                  <BadgeCheck size={18} />
+                  <div>
+                    <strong>ABN</strong>
+                    <span>Verification pending</span>
+                  </div>
+                </div>
+
+                <p style={{ marginTop: 16, opacity: 0.72, fontSize: 14 }}>
+                  “Provided” means the tradie has supplied the document to Vekio. It does not mean Vekio has independently verified it yet.
+                </p>
+              </div>
+
+              <div className="card">
+                <h2>Recent work</h2>
+                {tradie.project_photo_urls?.length ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
+                    {tradie.project_photo_urls.slice(-4).reverse().map((url, index) => (
+                      <img
+                        key={`${url}-${index}`}
+                        src={url}
+                        alt={`${businessName} project work`}
+                        style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 16, border: "1px solid rgba(255,255,255,.1)" }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="credential">
+                    <Images size={18} />
+                    <div>
+                      <strong>Project gallery</strong>
+                      <span>No project photos added yet</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

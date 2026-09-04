@@ -50,14 +50,31 @@ export default function DashboardPage() {
   const [assetStatus, setAssetStatus] = useState("");
 
   useEffect(() => {
+    let alive = true;
+
     async function loadTradie() {
       setLoading(true);
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const user = authData.user;
+
+      if (!alive) return;
+
+      if (authError || !user) {
+        setTradie(null);
+        setLoading(false);
+        router.replace("/login");
+        return;
+      }
 
       const { data, error } = await supabase
         .from("tradies")
         .select("*")
         .eq("slug", slug)
+        .eq("auth_user_id", user.id)
         .single();
+
+      if (!alive) return;
 
       if (error) {
         console.error(error);
@@ -70,10 +87,31 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        loadTradie();
+      }
+    }
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setTradie(null);
+        window.location.replace("/login");
+      }
+    });
+
+    window.addEventListener("pageshow", handlePageShow);
+
     if (slug) {
       loadTradie();
     }
-  }, [slug]);
+
+    return () => {
+      alive = false;
+      window.removeEventListener("pageshow", handlePageShow);
+      listener.subscription.unsubscribe();
+    };
+  }, [slug, router]);
 
   async function handleProfilePhotoUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -246,14 +284,14 @@ export default function DashboardPage() {
   return (
     <main className="page-shell">
       <nav className="nav">
-        <Link className="logo" href="/">
+        <Link className="logo" href={`/dashboard/${tradie.slug}`}>
           <span className="logo-mark">V</span>
           <span>Vekio</span>
         </Link>
 
         <div className="nav-links">
           <Link href={`/tradie/${tradie.slug}`}>View public profile</Link>
-          <button type="button" onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }} style={{background:"none", border:0, padding:0, color:"inherit", cursor:"pointer", font:"inherit"}}>Logout</button>
+          <button type="button" onClick={async () => { await supabase.auth.signOut(); window.location.replace("/login"); }} style={{background:"none", border:0, padding:0, color:"inherit", cursor:"pointer", font:"inherit"}}>Logout</button>
         </div>
       </nav>
 
