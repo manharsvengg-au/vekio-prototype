@@ -18,21 +18,25 @@ export default function ActivateAccountPage() {
     if (loading) return;
     if (password.length < 8) { setStatus("Use a password with at least 8 characters."); return; }
     setLoading(true);
-    setStatus("Checking your Vekio profile...");
+    setStatus("Creating your Vekio login...");
 
-    const normalizedEmail = email.trim();
-    const { data: tradie, error: lookupError } = await supabase.from("tradies").select("slug").eq("email", normalizedEmail).maybeSingle();
-    if (lookupError || !tradie?.slug) { setStatus("No existing Vekio profile was found for that email."); setLoading(false); return; }
-
+    const normalizedEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
     if (error) { setStatus(error.message); setLoading(false); return; }
 
     if (data.session) {
-      router.push(`/dashboard/${tradie.slug}`);
+      const { data: claimedSlug, error: claimError } = await supabase.rpc("claim_tradie_profile");
+      if (claimError || !claimedSlug) {
+        await supabase.auth.signOut();
+        setStatus("Your login was created, but Vekio could not connect it to the existing profile yet.");
+        setLoading(false);
+        return;
+      }
+      router.push(`/dashboard/${claimedSlug}`);
       return;
     }
 
-    setStatus("Access created. Check your email for Supabase's confirmation link, then log in.");
+    setStatus("Access created. Check your email for the confirmation link, then log in.");
     setLoading(false);
   }
 

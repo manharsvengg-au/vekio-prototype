@@ -36,20 +36,16 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: tradie, error: profileError } = await supabase
-      .from("tradies")
-      .select("slug")
-      .eq("email", email.trim())
-      .maybeSingle();
+    const { data: claimedSlug, error: claimError } = await supabase.rpc("claim_tradie_profile");
 
-    if (profileError || !tradie?.slug) {
+    if (claimError || !claimedSlug) {
       await supabase.auth.signOut();
-      setStatus("Login succeeded, but no matching Vekio profile was found for this email.");
+      setStatus("Login succeeded, but Vekio could not connect this login to a profile.");
       setLoading(false);
       return;
     }
 
-    router.push(`/dashboard/${tradie.slug}`);
+    router.push(`/dashboard/${claimedSlug}`);
   }
 
   return (
