@@ -1,7 +1,57 @@
-import Link from 'next/link';
-import { ArrowRight, Fingerprint, LockKeyhole, ShieldCheck } from 'lucide-react';
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
+
+    if (!email.trim() || !password) {
+      setStatus("Enter your email address and password.");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("Signing you in...");
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (authError) {
+      setStatus("That login did not work. Check your details or reset your password.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: tradie, error: profileError } = await supabase
+      .from("tradies")
+      .select("slug")
+      .eq("email", email.trim())
+      .maybeSingle();
+
+    if (profileError || !tradie?.slug) {
+      await supabase.auth.signOut();
+      setStatus("Login succeeded, but no matching Vekio profile was found for this email.");
+      setLoading(false);
+      return;
+    }
+
+    router.push(`/dashboard/${tradie.slug}`);
+  }
+
   return (
     <main className="login-wrap">
       <section className="login-left">
@@ -19,19 +69,26 @@ export default function LoginPage() {
       </section>
 
       <section className="login-right">
-        <form className="card form-card">
+        <form className="card form-card" onSubmit={handleLogin}>
           <h2>Log in</h2>
           <p>Enter your details to access your dashboard.</p>
           <div className="field">
             <label>Email address</label>
-            <input type="email" placeholder="you@example.com" />
+            <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </div>
           <div className="field">
-            <label>Password</label>
-            <input type="password" placeholder="••••••••" />
+            <div style={{display:"flex", justifyContent:"space-between", gap:12, alignItems:"center"}}>
+              <label>Password</label>
+              <Link href="/forgot-password" style={{color:"var(--brand-2)", fontSize:13}}>Forgot password?</Link>
+            </div>
+            <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
           </div>
-          <button className="btn btn-primary btn-wide" type="button">Continue <ArrowRight size={18}/></button>
+          <button className="btn btn-primary btn-wide" type="submit" disabled={loading} style={{opacity:loading ? .65 : 1}}>
+            {loading ? "Signing in..." : "Continue"} {!loading && <ArrowRight size={18}/>} 
+          </button>
+          {status && <p style={{textAlign:"center", color:"var(--brand-2)"}}>{status}</p>}
           <p style={{textAlign:'center'}}>New to Vekio? <Link href="/register" style={{color:'var(--brand-2)'}}>Join for free</Link></p>
+          <p style={{textAlign:'center', fontSize:13}}>Already made a profile before login was added? <Link href="/activate-account" style={{color:'var(--brand-2)'}}>Set up access</Link></p>
         </form>
       </section>
     </main>

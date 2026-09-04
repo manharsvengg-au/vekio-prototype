@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   BadgeCheck,
   ClipboardCheck,
@@ -13,6 +13,7 @@ import {
   Phone,
   ShieldCheck,
   Star,
+  Printer,
   UserRound,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
@@ -30,6 +31,7 @@ type Tradie = {
 
 export default function DashboardPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.id as string;
 
   const [tradie, setTradie] = useState<Tradie | null>(null);
@@ -123,7 +125,7 @@ export default function DashboardPage() {
 
         <div className="nav-links">
           <Link href={`/tradie/${tradie.slug}`}>View public profile</Link>
-          <Link href="/login">Logout</Link>
+          <button type="button" onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }} style={{background:"none", border:0, padding:0, color:"inherit", cursor:"pointer", font:"inherit"}}>Logout</button>
         </div>
       </nav>
 
@@ -257,6 +259,17 @@ export default function DashboardPage() {
                 <strong>1</strong>
                 <span>Public profile live</span>
               </div>
+            </div>
+
+            <div className="card print-vekio-launch">
+              <div>
+                <div className="eyebrow">Print.Vekio</div>
+                <h2>Turn your Vekio ID into printed marketing</h2>
+                <p>Your business details are already here. Pick a product, customise the design and create production artwork.</p>
+              </div>
+              <Link className="btn btn-primary" href={`/print/${tradie.slug}/fridge-magnets`}>
+                <Printer size={18} /> Design fridge magnets
+              </Link>
             </div>
 
             <div className="card v3-about">

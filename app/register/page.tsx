@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const [trade, setTrade] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -120,6 +121,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password.length < 8) {
+      setStatus("Please choose a password with at least 8 characters.");
+      return;
+    }
+
     setIsSaving(true);
     setStatus("Uploading profile photo...");
 
@@ -133,6 +139,17 @@ export default function RegisterPage() {
       }
 
       const profilePhotoUrl = await uploadProfilePhoto(slug);
+
+      setStatus("Creating your secure login...");
+
+      const { error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
 
       setStatus("Creating your Vekio ID...");
 
@@ -347,7 +364,7 @@ export default function RegisterPage() {
           
           <div className="field">
             <label>Password</label>
-            <input type="password" placeholder="••••••••" />
+            <input type="password" placeholder="At least 8 characters" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
           </div>
 
           <button
