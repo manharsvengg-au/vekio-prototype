@@ -27,6 +27,9 @@ type Tradie = {
   email: string | null;
   slug: string | null;
   profile_photo_url: string | null;
+  trade_licence_path: string | null;
+  insurance_path: string | null;
+  project_photo_urls: string[] | null;
 };
 
 export default function DashboardPage() {
@@ -40,6 +43,11 @@ export default function DashboardPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoStatus, setPhotoStatus] = useState("");
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const licenceInputRef = useRef<HTMLInputElement | null>(null);
+  const insuranceInputRef = useRef<HTMLInputElement | null>(null);
+  const projectInputRef = useRef<HTMLInputElement | null>(null);
+  const [assetUploading, setAssetUploading] = useState<string | null>(null);
+  const [assetStatus, setAssetStatus] = useState("");
 
   useEffect(() => {
     async function loadTradie() {
@@ -135,6 +143,55 @@ export default function DashboardPage() {
     photoInputRef.current?.click();
   }
 
+  async function handleDocumentUpload(event: ChangeEvent<HTMLInputElement>, kind: "licence" | "insurance") {
+    const file = event.target.files?.[0];
+    if (!file || !tradie) return;
+    setAssetStatus("");
+    const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) { setAssetStatus("Use PDF, JPG, PNG or WebP."); event.target.value=""; return; }
+    if (file.size > 10 * 1024 * 1024) { setAssetStatus("Document must be smaller than 10 MB."); event.target.value=""; return; }
+    setAssetUploading(kind);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Your login session has expired. Please log in again.");
+      const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+      const filePath = `${kind}/${authData.user.id}/${tradie.slug || tradie.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("tradie-documents").upload(filePath, file, { cacheControl:"3600", upsert:false, contentType:file.type });
+      if (uploadError) throw uploadError;
+      const column = kind === "licence" ? "trade_licence_path" : "insurance_path";
+      const { error: updateError } = await supabase.from("tradies").update({ [column]: filePath }).eq("id", tradie.id);
+      if (updateError) throw updateError;
+      setTradie({ ...tradie, [column]: filePath } as Tradie);
+      setAssetStatus(`${kind === "licence" ? "Trade licence" : "Insurance certificate"} saved.`);
+    } catch (error:any) { setAssetStatus(error?.message || "Upload failed. Please try again."); }
+    finally { setAssetUploading(null); event.target.value=""; }
+  }
+
+  async function handleProjectPhotoUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !tradie) return;
+    setAssetStatus("");
+    if (!file.type.startsWith("image/")) { setAssetStatus("Choose an image file."); event.target.value=""; return; }
+    if (file.size > 8 * 1024 * 1024) { setAssetStatus("Project image must be smaller than 8 MB."); event.target.value=""; return; }
+    setAssetUploading("project");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Your login session has expired. Please log in again.");
+      const ext=file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const filePath=`projects/${authData.user.id}/${tradie.slug || tradie.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("tradie-project-photos").upload(filePath,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+      if (uploadError) throw uploadError;
+      const { data: publicUrlData }=supabase.storage.from("tradie-project-photos").getPublicUrl(filePath);
+      const next=[...(tradie.project_photo_urls || []), publicUrlData.publicUrl];
+      const { error:updateError }=await supabase.from("tradies").update({project_photo_urls:next}).eq("id",tradie.id);
+      if(updateError) throw updateError;
+      setTradie({...tradie,project_photo_urls:next});
+      setAssetStatus("Project photo added.");
+    } catch(error:any){ setAssetStatus(error?.message || "Upload failed. Please try again."); }
+    finally{ setAssetUploading(null); event.target.value=""; }
+  }
+
+
   if (loading) {
     return (
       <main style={{ padding: 40, color: "white", background: "#07111f" }}>
@@ -174,9 +231,9 @@ export default function DashboardPage() {
     { label: "Phone added", done: Boolean(tradie.phone) },
     { label: "Email added", done: Boolean(tradie.email) },
     { label: "Profile photo added", done: Boolean(tradie.profile_photo_url) },
-    { label: "Licence uploaded", done: false },
-    { label: "Insurance uploaded", done: false },
-    { label: "Project photos added", done: false },
+    { label: "Licence uploaded", done: Boolean(tradie.trade_licence_path) },
+    { label: "Insurance uploaded", done: Boolean(tradie.insurance_path) },
+    { label: "Project photos added", done: Boolean(tradie.project_photo_urls?.length) },
     { label: "First review received", done: false },
   ];
 
@@ -322,7 +379,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="card proof-stat">
-                <strong>0</strong>
+                <strong>{[tradie.trade_licence_path, tradie.insurance_path].filter(Boolean).length}</strong>
                 <span>Documents uploaded</span>
               </div>
 
@@ -365,17 +422,21 @@ export default function DashboardPage() {
 
                 <div className="credential">
                   <FileCheck2 size={18} />
-                  <div>
+                  <div style={{flex:1}}>
                     <strong>Trade licence</strong>
-                    <span>Upload required</span>
+                    <span>{tradie.trade_licence_path ? "Uploaded" : "Upload required"}</span>
+                    <input ref={licenceInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e)=>handleDocumentUpload(e,"licence")} style={{display:"none"}} />
+                    <button type="button" className="btn btn-secondary" style={{marginTop:10}} disabled={assetUploading==="licence"} onClick={()=>licenceInputRef.current?.click()}>{assetUploading==="licence" ? "Uploading..." : tradie.trade_licence_path ? "Replace licence" : "Upload licence"}</button>
                   </div>
                 </div>
 
                 <div className="credential">
                   <ShieldCheck size={18} />
-                  <div>
+                  <div style={{flex:1}}>
                     <strong>Insurance</strong>
-                    <span>Upload required</span>
+                    <span>{tradie.insurance_path ? "Uploaded" : "Upload required"}</span>
+                    <input ref={insuranceInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e)=>handleDocumentUpload(e,"insurance")} style={{display:"none"}} />
+                    <button type="button" className="btn btn-secondary" style={{marginTop:10}} disabled={assetUploading==="insurance"} onClick={()=>insuranceInputRef.current?.click()}>{assetUploading==="insurance" ? "Uploading..." : tradie.insurance_path ? "Replace insurance" : "Upload insurance"}</button>
                   </div>
                 </div>
 
@@ -436,10 +497,12 @@ export default function DashboardPage() {
 
                 <div className="credential">
                   <ImagePlus size={18} />
-
-                  <div>
+                  <div style={{flex:1}}>
                     <strong>Project gallery</strong>
-                    <span>Add proof of work</span>
+                    <span>{tradie.project_photo_urls?.length ? `${tradie.project_photo_urls.length} photo${tradie.project_photo_urls.length===1?"":"s"} uploaded` : "Add proof of work"}</span>
+                    <input ref={projectInputRef} type="file" accept="image/*" onChange={handleProjectPhotoUpload} style={{display:"none"}} />
+                    <button type="button" className="btn btn-secondary" style={{marginTop:10}} disabled={assetUploading==="project"} onClick={()=>projectInputRef.current?.click()}>{assetUploading==="project" ? "Uploading..." : "Add project photo"}</button>
+                    {tradie.project_photo_urls?.length ? <div className="dashboard-project-thumbs">{tradie.project_photo_urls.slice(-4).map((url,i)=><img key={`${url}-${i}`} src={url} alt="Project work" />)}</div> : null}
                   </div>
                 </div>
 
@@ -481,22 +544,15 @@ export default function DashboardPage() {
                   </button>
                 )}
 
-                <span>
-                  <FileCheck2 size={18} /> Upload trade licence
-                </span>
-
-                <span>
-                  <ShieldCheck size={18} /> Upload insurance certificate
-                </span>
-
-                <span>
-                  <ImagePlus size={18} /> Add first project photo
-                </span>
+                {!tradie.trade_licence_path && <button type="button" className="next-action-button" onClick={()=>licenceInputRef.current?.click()}><span><FileCheck2 size={18}/> Upload trade licence</span></button>}
+                {!tradie.insurance_path && <button type="button" className="next-action-button" onClick={()=>insuranceInputRef.current?.click()}><span><ShieldCheck size={18}/> Upload insurance certificate</span></button>}
+                {!tradie.project_photo_urls?.length && <button type="button" className="next-action-button" onClick={()=>projectInputRef.current?.click()}><span><ImagePlus size={18}/> Add first project photo</span></button>}
 
                 <span>
                   <Link2 size={18} /> Copy and share public Vekio link
                 </span>
               </div>
+              {assetStatus && <p style={{marginTop:14,color:"#9effca"}}>{assetStatus}</p>}
             </div>
           </section>
         </section>

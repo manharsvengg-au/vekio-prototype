@@ -59,8 +59,8 @@ export default function FridgeMagnetDesigner(){
       const qrX=layout==="qr"?710:760, qrY=layout==="qr"?145:330, qrS=layout==="qr"?230:170;
       const [qrData,photoData]=await Promise.all([asDataUrl(qrUrl), showImage&&tradie?.profile_photo_url ? asDataUrl(tradie.profile_photo_url) : Promise.resolve("")]);
       if(!qrData){ alert("The QR code could not be generated. Please try again."); return; }
-      const photo=photoData ? `<defs><clipPath id="photoClip"><circle cx="135" cy="365" r="52"/></clipPath></defs><image href="${photoData}" x="83" y="313" width="104" height="104" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/><circle cx="135" cy="365" r="53" fill="none" stroke="${p.accent}" stroke-width="3"/>` : "";
-      const copyX=photoData?215:70;
+      const photo=photoData ? `<defs><clipPath id="photoClip"><rect x="70" y="320" width="150" height="150" rx="24"/></clipPath></defs><image href="${photoData}" x="70" y="320" width="150" height="150" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/><rect x="70" y="320" width="150" height="150" rx="24" fill="none" stroke="${p.accent}" stroke-width="3"/>` : "";
+      const copyX=photoData?250:70;
       const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
         <rect width="1063" height="650" rx="18" fill="${p.bg}"/>
         <rect x="34" y="34" width="995" height="582" rx="12" fill="none" stroke="${p.accent}" stroke-width="3" opacity=".5"/>
@@ -68,7 +68,7 @@ export default function FridgeMagnetDesigner(){
         <text x="70" y="235" fill="${p.ink}" font-family="Arial,sans-serif" font-size="${layout==='clean'?54:64}" font-weight="800">${esc(business.slice(0,28))}</text>
         <text x="70" y="295" fill="${p.ink}" opacity=".78" font-family="Arial,sans-serif" font-size="30">${esc(tagline.slice(0,46))}</text>
         ${photo}
-        <text x="${copyX}" y="390" fill="${p.accent}" font-family="Arial,sans-serif" font-size="42" font-weight="800">${esc(phone||"YOUR PHONE")}</text>
+        <text x="${copyX}" y="405" fill="${p.accent}" font-family="Arial,sans-serif" font-size="42" font-weight="800">${esc(phone||"YOUR PHONE")}</text>
         <text x="70" y="490" fill="${p.ink}" opacity=".72" font-family="Arial,sans-serif" font-size="22">${esc(profileUrl)}</text>
         <rect x="${qrX-8}" y="${qrY-8}" width="${qrS+16}" height="${qrS+16}" rx="16" fill="#fff"/>
         <image href="${qrData}" x="${qrX}" y="${qrY}" width="${qrS}" height="${qrS}"/>
