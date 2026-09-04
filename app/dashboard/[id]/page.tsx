@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -37,6 +37,9 @@ export default function DashboardPage() {
   const [tradie, setTradie] = useState<Tradie | null>(null);
   const [loading, setLoading] = useState(true);
   const [debugError, setDebugError] = useState<any>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState("");
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     async function loadTradie() {
@@ -63,6 +66,74 @@ export default function DashboardPage() {
       loadTradie();
     }
   }, [slug]);
+
+  async function handleProfilePhotoUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !tradie) return;
+
+    setPhotoStatus("");
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoStatus("Choose a JPG, PNG or other image file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoStatus("Image must be smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setPhotoUploading(true);
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        throw new Error("Your login session has expired. Please log in again.");
+      }
+
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const safeSlug = tradie.slug || tradie.id;
+      const filePath = `profiles/${authData.user.id}/${safeSlug}-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("tradie-profile-photos")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("tradie-profile-photos")
+        .getPublicUrl(filePath);
+
+      const publicUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("tradies")
+        .update({ profile_photo_url: publicUrl })
+        .eq("id", tradie.id);
+
+      if (updateError) throw updateError;
+
+      setTradie({ ...tradie, profile_photo_url: publicUrl });
+      setPhotoStatus("Profile image saved. Print.Vekio will use it automatically.");
+    } catch (error: any) {
+      console.error("Profile image upload failed:", error);
+      setPhotoStatus(error?.message || "Image upload failed. Please try again.");
+    } finally {
+      setPhotoUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  function chooseProfilePhoto() {
+    photoInputRef.current?.click();
+  }
 
   if (loading) {
     return (
@@ -320,17 +391,46 @@ export default function DashboardPage() {
               <div className="card">
                 <h2>Profile assets</h2>
 
-                <div className="credential">
+                <div className="credential profile-photo-credential">
                   <ImagePlus size={18} />
 
-                  <div>
-                    <strong>Profile photo</strong>
+                  <div style={{ flex: 1 }}>
+                    <strong>Profile photo / logo</strong>
 
                     <span>
                       {tradie.profile_photo_url
-                        ? "Uploaded"
+                        ? "Uploaded — used across Vekio and Print.Vekio"
                         : "Not uploaded"}
                     </span>
+
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilePhotoUpload}
+                      style={{ display: "none" }}
+                    />
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={chooseProfilePhoto}
+                      disabled={photoUploading}
+                      style={{ marginTop: 12 }}
+                    >
+                      <ImagePlus size={17} />
+                      {photoUploading
+                        ? "Uploading..."
+                        : tradie.profile_photo_url
+                        ? "Replace image"
+                        : "Upload image"}
+                    </button>
+
+                    {photoStatus && (
+                      <span style={{ marginTop: 10, display: "block" }}>
+                        {photoStatus}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -358,6 +458,29 @@ export default function DashboardPage() {
               <h2>Next actions</h2>
 
               <div className="v3-list">
+                {!tradie.profile_photo_url && (
+                  <button
+                    type="button"
+                    onClick={chooseProfilePhoto}
+                    disabled={photoUploading}
+                    style={{
+                      width: "100%",
+                      border: 0,
+                      background: "transparent",
+                      color: "inherit",
+                      padding: 0,
+                      font: "inherit",
+                      textAlign: "left",
+                      cursor: photoUploading ? "wait" : "pointer",
+                    }}
+                  >
+                    <span>
+                      <ImagePlus size={18} />
+                      {photoUploading ? "Uploading profile image..." : "Upload profile photo / logo"}
+                    </span>
+                  </button>
+                )}
+
                 <span>
                   <FileCheck2 size={18} /> Upload trade licence
                 </span>
