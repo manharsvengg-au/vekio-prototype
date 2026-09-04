@@ -30,6 +30,8 @@ type Tradie = {
   trade_licence_path: string | null;
   insurance_path: string | null;
   project_photo_urls: string[] | null;
+  service_area: string | null;
+  about_business: string | null;
 };
 
 export default function DashboardPage() {
@@ -48,6 +50,12 @@ export default function DashboardPage() {
   const projectInputRef = useRef<HTMLInputElement | null>(null);
   const [assetUploading, setAssetUploading] = useState<string | null>(null);
   const [assetStatus, setAssetStatus] = useState("");
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [serviceArea, setServiceArea] = useState("");
+  const [aboutBusiness, setAboutBusiness] = useState("");
+  const [profileSaveStatus, setProfileSaveStatus] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [newEnquiries, setNewEnquiries] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -82,6 +90,15 @@ export default function DashboardPage() {
         setTradie(null);
       } else {
         setTradie(data);
+        setServiceArea(data.service_area || "");
+        setAboutBusiness(data.about_business || "");
+
+        const { count } = await supabase
+          .from("enquiries")
+          .select("id", { count: "exact", head: true })
+          .eq("tradie_id", data.id)
+          .eq("status", "new");
+        setNewEnquiries(count || 0);
       }
 
       setLoading(false);
@@ -229,6 +246,32 @@ export default function DashboardPage() {
     finally{ setAssetUploading(null); event.target.value=""; }
   }
 
+  async function savePublicDetails() {
+    if (!tradie) return;
+    setProfileSaving(true);
+    setProfileSaveStatus("");
+    try {
+      const { error } = await supabase
+        .from("tradies")
+        .update({
+          service_area: serviceArea.trim() || null,
+          about_business: aboutBusiness.trim() || null,
+        })
+        .eq("id", tradie.id);
+      if (error) throw error;
+      setTradie({
+        ...tradie,
+        service_area: serviceArea.trim() || null,
+        about_business: aboutBusiness.trim() || null,
+      });
+      setProfileSaveStatus("Public details saved.");
+      setProfileEditOpen(false);
+    } catch (error: any) {
+      setProfileSaveStatus(error?.message || "Could not save details.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -412,7 +455,7 @@ export default function DashboardPage() {
           <section className="v3-content">
             <div className="v3-proof-strip">
               <div className="card proof-stat">
-                <strong>0</strong>
+                <strong>{newEnquiries}</strong>
                 <span>New enquiries</span>
               </div>
 
@@ -439,19 +482,47 @@ export default function DashboardPage() {
             </div>
 
             <div className="card v3-about">
-              <h2>Business details</h2>
+              <div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
+                <div>
+                  <h2>Business details</h2>
+                  <p>
+                    <strong>Business:</strong> {businessName}
+                    <br />
+                    <strong>Owner:</strong> {fullName}
+                    <br />
+                    <strong>Trade:</strong> {trade}
+                    <br />
+                    <strong>Phone:</strong> {tradie.phone || "Not added"}
+                    <br />
+                    <strong>Email:</strong> {tradie.email || "Not added"}
+                    <br />
+                    <strong>Service area:</strong> {tradie.service_area || "Not added"}
+                  </p>
+                  {tradie.about_business && <p>{tradie.about_business}</p>}
+                </div>
+                <button type="button" className="btn btn-secondary" onClick={()=>setProfileEditOpen(!profileEditOpen)}>
+                  {profileEditOpen ? "Close editor" : "Edit public details"}
+                </button>
+              </div>
 
-              <p>
-                <strong>Business:</strong> {businessName}
-                <br />
-                <strong>Owner:</strong> {fullName}
-                <br />
-                <strong>Trade:</strong> {trade}
-                <br />
-                <strong>Phone:</strong> {tradie.phone || "Not added"}
-                <br />
-                <strong>Email:</strong> {tradie.email || "Not added"}
-              </p>
+              {profileEditOpen && (
+                <div style={{marginTop:20,display:"grid",gap:14}}>
+                  <label className="field">
+                    <span>Service area</span>
+                    <input value={serviceArea} onChange={(e)=>setServiceArea(e.target.value)} placeholder="Brabham, Ellenbrook, Midland, Perth Metro" />
+                  </label>
+                  <label className="field">
+                    <span>About my business</span>
+                    <textarea value={aboutBusiness} onChange={(e)=>setAboutBusiness(e.target.value)} placeholder="Tell customers what you do, what you specialise in, and what areas you service." />
+                  </label>
+                  <div>
+                    <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={savePublicDetails}>
+                      {profileSaving ? "Saving..." : "Save public details"}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {profileSaveStatus && <p style={{marginTop:12,color:"#9effca"}}>{profileSaveStatus}</p>}
             </div>
 
             <div className="v3-two">

@@ -30,6 +30,8 @@ type Tradie = {
   trade_licence_path: string | null;
   insurance_path: string | null;
   project_photo_urls: string[] | null;
+  service_area: string | null;
+  about_business: string | null;
 };
 
 export default function TradieProfilePage() {
@@ -58,7 +60,7 @@ export default function TradieProfilePage() {
       const { data, error } = await supabase
         .from("tradies")
         .select(
-          "id, full_name, business_name, trade, phone, email, slug, profile_photo_url, trade_licence_path, insurance_path, project_photo_urls"
+          "id, full_name, business_name, trade, phone, email, slug, profile_photo_url, trade_licence_path, insurance_path, project_photo_urls, service_area, about_business"
         )
         .eq("slug", slug)
         .single();
@@ -464,8 +466,7 @@ export default function TradieProfilePage() {
               </p>
 
               <p>
-                This Vekio profile allows customers to send work enquiries
-                directly to {fullName}.
+                {tradie.about_business || `This Vekio profile allows customers to send work enquiries directly to ${fullName}.`}
               </p>
             </div>
 
@@ -531,7 +532,7 @@ export default function TradieProfilePage() {
 
                   <div>
                     <strong>Service area</strong>
-                    <span>Ask the tradie directly</span>
+                    <span>{tradie.service_area || "Ask the tradie directly"}</span>
                   </div>
                 </div>
 
@@ -540,7 +541,7 @@ export default function TradieProfilePage() {
 
                   <div>
                     <strong>Direct enquiries</strong>
-                    <span>Delivered to the tradie</span>
+                    <span>Delivered directly to {tradie.full_name || "the tradie"}</span>
                   </div>
                 </div>
               </div>
