@@ -67,12 +67,10 @@ export default function BusinessCardDesigner(){
       const [qrData,photoData]=await Promise.all([asDataUrl(qrUrl),showImage&&tradie?.profile_photo_url?asDataUrl(tradie.profile_photo_url):Promise.resolve("")]);
       if(!qrData){alert("The QR code could not be generated. Please try again.");return;}
       const base=(business||"vekio").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").toLowerCase();
-      const photo=photoData?`<defs><clipPath id="pc"><rect x="70" y="315" width="150" height="150" rx="26"/></clipPath></defs><image href="${photoData}" x="70" y="315" width="150" height="150" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/><rect x="70" y="315" width="150" height="150" rx="26" fill="none" stroke="${p.accent}" stroke-width="3"/>`:"";
-      const copyX=photoData?250:70;
-      const front=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${p.bg}"/><rect x="34" y="34" width="995" height="582" rx="18" fill="none" stroke="${p.accent}" stroke-width="3" opacity=".45"/><text x="70" y="125" fill="${p.accent}" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="2">VEKIO PROFESSIONAL</text><text x="70" y="225" fill="${p.ink}" font-family="Arial,sans-serif" font-size="66" font-weight="800">${esc(business.slice(0,27))}</text><text x="70" y="285" fill="${p.soft}" font-family="Arial,sans-serif" font-size="30">${esc(trade.slice(0,44))}</text>${photo}<text x="${copyX}" y="390" fill="${p.ink}" font-family="Arial,sans-serif" font-size="31" font-weight="700">${esc(person.slice(0,32))}</text><text x="${copyX}" y="435" fill="${p.accent}" font-family="Arial,sans-serif" font-size="38" font-weight="800">${esc(phone||"YOUR PHONE")}</text><text x="70" y="535" fill="${p.soft}" font-family="Arial,sans-serif" font-size="20">${esc(serviceArea.slice(0,72))}</text></svg>`;
-      const back=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${p.bg}"/><rect x="34" y="34" width="995" height="582" rx="18" fill="none" stroke="${p.accent}" stroke-width="3" opacity=".45"/><text x="70" y="135" fill="${p.ink}" font-family="Arial,sans-serif" font-size="42" font-weight="800">Connect with ${esc((person||business).slice(0,27))}</text><text x="70" y="195" fill="${p.soft}" font-family="Arial,sans-serif" font-size="24">${esc(email.slice(0,50))}</text><text x="70" y="240" fill="${p.accent}" font-family="Arial,sans-serif" font-size="34" font-weight="800">${esc(phone||"YOUR PHONE")}</text><rect x="698" y="120" width="270" height="270" rx="22" fill="#fff"/><image href="${qrData}" x="714" y="136" width="238" height="238"/><text x="833" y="430" text-anchor="middle" fill="${p.ink}" font-family="Arial,sans-serif" font-size="18">${esc(cta.slice(0,38))}</text><text x="70" y="520" fill="${p.soft}" font-family="Arial,sans-serif" font-size="20">${esc(profileUrl)}</text><text x="70" y="565" fill="${p.accent}" font-family="Arial,sans-serif" font-size="20" font-weight="700">Powered by Vekio</text></svg>`;
-      saveSvg(front,`${base}-business-card-front.svg`);
-      setTimeout(()=>saveSvg(back,`${base}-business-card-back.svg`),250);
+      const photo=photoData?`<defs><clipPath id="pc"><rect x="70" y="360" width="120" height="120" rx="22"/></clipPath></defs><image href="${photoData}" x="70" y="360" width="120" height="120" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/><rect x="70" y="360" width="120" height="120" rx="22" fill="none" stroke="${p.accent}" stroke-width="3"/>`:"";
+      const copyX=photoData?215:70;
+      const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${p.bg}"/><rect x="34" y="34" width="995" height="582" rx="18" fill="none" stroke="${p.accent}" stroke-width="3" opacity=".45"/><text x="70" y="115" fill="${p.accent}" font-family="Arial,sans-serif" font-size="23" font-weight="700" letter-spacing="2">VEKIO PROFESSIONAL</text><text x="70" y="205" fill="${p.ink}" font-family="Arial,sans-serif" font-size="58" font-weight="800">${esc(business.slice(0,27))}</text><text x="70" y="260" fill="${p.soft}" font-family="Arial,sans-serif" font-size="28">${esc(trade.slice(0,44))}</text>${photo}<text x="${copyX}" y="395" fill="${p.ink}" font-family="Arial,sans-serif" font-size="27" font-weight="700">${esc(person.slice(0,32))}</text><text x="${copyX}" y="438" fill="${p.accent}" font-family="Arial,sans-serif" font-size="34" font-weight="800">${esc(phone||"YOUR PHONE")}</text><text x="${copyX}" y="474" fill="${p.soft}" font-family="Arial,sans-serif" font-size="19">${esc(email.slice(0,50))}</text><rect x="785" y="285" width="190" height="190" rx="18" fill="#fff"/><image href="${qrData}" x="797" y="297" width="166" height="166"/><text x="880" y="505" text-anchor="middle" fill="${p.ink}" font-family="Arial,sans-serif" font-size="14">${esc(cta.slice(0,38))}</text><text x="70" y="550" fill="${p.soft}" font-family="Arial,sans-serif" font-size="17">${esc(serviceArea.slice(0,72))}</text><text x="70" y="585" fill="${p.accent}" font-family="Arial,sans-serif" font-size="16" font-weight="700">${esc(profileUrl)}</text></svg>`;
+      saveSvg(svg,`${base}-business-card.svg`);
     }finally{setGenerating(false);}
   }
 
@@ -81,7 +79,7 @@ export default function BusinessCardDesigner(){
 
   return <main className="page-shell print-page">
     <nav className="nav"><Link className="logo" href={`/print/${id}`}><span className="logo-mark">V</span><span>Print.Vekio</span></Link><Link className="btn btn-secondary" href={`/print/${id}`}><ArrowLeft size={17}/> Products</Link></nav>
-    <section className="print-head"><div><div className="eyebrow">Business cards · V1 designer</div><h1>Hand them your Vekio ID.</h1><p>Front for your business. Back for direct contact and your unique Vekio QR.</p></div><div className="print-status"><Check size={18}/> Vekio profile connected</div></section>
+    <section className="print-head"><div><div className="eyebrow">Business cards · V1 designer</div><h1>Hand them your Vekio ID.</h1><p>Everything customers need on one side: your business, contact details and unique Vekio QR.</p></div><div className="print-status"><Check size={18}/> Vekio profile connected</div></section>
     <section className="print-workspace">
       <aside className="card print-controls">
         <div className="control-title"><CreditCard size={20}/><strong>Card details</strong></div>
@@ -102,23 +100,23 @@ export default function BusinessCardDesigner(){
       <section className="print-stage business-card-stage">
         <div className="stage-label">LIVE PREVIEW · STANDARD 90 × 55 MM CONCEPT SIZE</div>
         <div className="business-card-pair">
-          <div className={`business-card-preview bc-front bc-${layout}`} style={{background:p.bg,color:p.ink,borderColor:p.accent}}>
+          <div className={`business-card-preview bc-single bc-${layout}`} style={{background:p.bg,color:p.ink,borderColor:p.accent}}>
             <div className="bc-kicker" style={{color:p.accent}}>VEKIO PROFESSIONAL</div>
             <strong>{business||"YOUR BUSINESS"}</strong>
             <em>{trade||"Your trade"}</em>
-            <div className="bc-front-lower">
-              {showImage&&tradie.profile_photo_url&&<img src={tradie.profile_photo_url} alt="Profile"/>}
-              <div><b>{person||"Contact person"}</b><span style={{color:p.accent}}>{phone||"YOUR PHONE"}</span></div>
+            <div className="bc-single-lower">
+              <div className="bc-person">
+                {showImage&&tradie.profile_photo_url&&<img src={tradie.profile_photo_url} alt="Profile"/>}
+                <div><b>{person||"Contact person"}</b><span style={{color:p.accent}}>{phone||"YOUR PHONE"}</span><small>{email}</small></div>
+              </div>
+              <div className="bc-back-qr"><div className="qr-live"><img src={qrUrl} alt={`QR code for ${profileUrl}`}/></div><small>{cta}</small></div>
             </div>
-            <small>{serviceArea}</small>
-          </div>
-          <div className={`business-card-preview bc-back bc-${layout}`} style={{background:p.bg,color:p.ink,borderColor:p.accent}}>
-            <div className="bc-back-copy"><strong>Connect with {person||business}</strong><span>{email}</span><b style={{color:p.accent}}>{phone}</b><small>{profileUrl}</small><em style={{color:p.accent}}>Powered by Vekio</em></div>
-            <div className="bc-back-qr"><div className="qr-live"><img src={qrUrl} alt={`QR code for ${profileUrl}`}/></div><small>{cta}</small></div>
+            <small className="bc-area">{serviceArea}</small>
+            <small className="bc-url" style={{color:p.accent}}>{profileUrl}</small>
           </div>
         </div>
-        <div className="production-note"><strong>Two-sided V1 artwork.</strong> The front and back are generated as separate SVG files at a 90 × 55 mm concept ratio. Final supplier bleed/crop requirements will be added when printer fulfilment is connected.</div>
-        <div className="stage-actions"><button className="btn btn-primary" onClick={downloadArtwork} disabled={generating}><Download size={18}/> {generating?"Building artwork…":"Generate front + back SVGs"}</button><button className="btn btn-secondary" disabled title="Supplier fulfilment is the next integration">Send to print — next</button></div>
+        <div className="production-note"><strong>Single-sided V1 artwork.</strong> One SVG is generated at a 90 × 55 mm concept ratio. Final supplier bleed/crop requirements will be added when printer fulfilment is connected.</div>
+        <div className="stage-actions"><button className="btn btn-primary" onClick={downloadArtwork} disabled={generating}><Download size={18}/> {generating?"Building artwork…":"Generate card SVG"}</button><button className="btn btn-secondary" disabled title="Supplier fulfilment is the next integration">Send to print — next</button></div>
       </section>
     </section>
   </main>;

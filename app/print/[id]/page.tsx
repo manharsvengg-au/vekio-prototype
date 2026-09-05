@@ -59,17 +59,17 @@ export default function PrintVekioHub(){
         <div className="print-product-icon"><CreditCard size={30}/></div>
         <div className="print-product-state">NEW</div>
         <h2>Business cards</h2>
-        <p>Two-sided cards generated from your Vekio identity, with your own scannable QR on the back.</p>
+        <p>Single-sided cards generated from your Vekio identity, with contact details and your scannable Vekio QR.</p>
         <span className="print-product-cta">Design business cards →</span>
       </Link>
 
-      <div className="card print-product-card coming">
+      <Link className="card print-product-card live" href={`/print/${id}/flyers`}>
         <div className="print-product-icon"><FileText size={30}/></div>
-        <div className="print-product-state muted">NEXT</div>
+        <div className="print-product-state">NEW</div>
         <h2>Flyers</h2>
-        <p>A5 and DL promotional flyers using the same business identity and QR engine.</p>
-        <span className="print-product-cta muted"><Sparkles size={15}/> Coming next</span>
-      </div>
+        <p>A5 promotional flyers generated from the same business identity, contact details and Vekio QR.</p>
+        <span className="print-product-cta">Design flyers →</span>
+      </Link>
     </section>
 
     <section className="print-hub-note card">
