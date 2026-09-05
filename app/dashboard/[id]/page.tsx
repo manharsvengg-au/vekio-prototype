@@ -476,8 +476,8 @@ export default function DashboardPage() {
                 <h2>Turn your Vekio ID into printed marketing</h2>
                 <p>Your business details are already here. Pick a product, customise the design and create production artwork.</p>
               </div>
-              <Link className="btn btn-primary" href={`/print/${tradie.slug}/fridge-magnets`}>
-                <Printer size={18} /> Design fridge magnets
+              <Link className="btn btn-primary" href={`/print/${tradie.slug}`}>
+                <Printer size={18} /> Open Print.Vekio
               </Link>
             </div>
 
