@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     } = body;
 
     const { data, error } = await resend.emails.send({
-     from: "Vekio Enquiries <noreply@vekio.com.au>",
+     from: "Vekio Enquiries <enquiries@vekio.com.au>",
       to: tradieEmail,
       subject: `New Vekio enquiry from ${customerName}`,
       html: `
@@ -56,11 +56,7 @@ export async function POST(request: Request) {
         </div>
       </div>
 
-      <a href="mailto:${customerEmail}"
-         style="display:inline-block;background:#43c7eb;color:#061b2c;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:6px;">
-        Reply to customer
-      </a>
-
+   
       <p style="margin:28px 0 0;font-size:12px;color:#64748b;line-height:1.5;">
         This enquiry was sent through your Vekio profile.
       </p>
