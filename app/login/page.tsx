@@ -1,17 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("confirmed") === "1") {
+      setStatus("Email confirmed ✓ You can now log in to Vekio.");
+      return;
+    }
+
+    if (params.get("checkEmail") === "1") {
+      setStatus("Account created. Check your email and confirm your address before logging in.");
+    }
+  }, []);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,7 +45,12 @@ export default function LoginPage() {
     });
 
     if (authError) {
-      setStatus("That login did not work. Check your details or reset your password.");
+      const message = authError.message.toLowerCase();
+      if (message.includes("email not confirmed")) {
+        setStatus("Please confirm your email address first, then log in.");
+      } else {
+        setStatus("That login did not work. Check your details or reset your password.");
+      }
       setLoading(false);
       return;
     }
@@ -77,7 +96,24 @@ export default function LoginPage() {
               <label>Password</label>
               <Link href="/forgot-password" style={{color:"var(--brand-2)", fontSize:13}}>Forgot password?</Link>
             </div>
-            <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            <div className="password-wrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <button className="btn btn-primary btn-wide" type="submit" disabled={loading} style={{opacity:loading ? .65 : 1}}>
             {loading ? "Signing in..." : "Continue"} {!loading && <ArrowRight size={18}/>} 

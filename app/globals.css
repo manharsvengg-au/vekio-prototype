@@ -51,6 +51,26 @@ label { color: #dbe8ff; font-size: 13px; font-weight:700; }
 input, textarea, select { width:100%; background: rgba(255,255,255,.075); border:1px solid var(--line); color:var(--text); border-radius: 16px; padding: 13px 14px; outline:none; }
 textarea { min-height: 108px; resize: vertical; }
 input:focus, textarea:focus, select:focus { border-color: rgba(112,240,255,.72); box-shadow: 0 0 0 4px rgba(78,166,255,.12); }
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 48px; }
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.password-toggle:hover { color: var(--brand-2); background: rgba(255,255,255,.06); }
+.password-toggle:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
 .tradie-page { min-height:100vh; padding: 26px clamp(16px, 4vw, 64px) 60px; background: radial-gradient(circle at 80% 5%, rgba(78,166,255,.22), transparent 30%), #070b14; }
 .tradie-layout { max-width:1180px; margin: 30px auto 0; display:grid; grid-template-columns: 390px 1fr; gap: 22px; align-items:start; }
 .enquiry-card { padding:22px; position: sticky; top: 92px; }

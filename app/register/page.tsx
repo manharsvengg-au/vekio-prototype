@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Camera,
+  Eye,
+  EyeOff,
   ShieldCheck,
   UserRoundPlus,
 } from "lucide-react";
@@ -28,6 +30,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -143,8 +146,11 @@ export default function RegisterPage() {
       setStatus("Creating your secure login...");
 
       const { error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?confirmed=1`,
+        },
       });
 
       if (authError) {
@@ -168,8 +174,8 @@ export default function RegisterPage() {
         throw insertError;
       }
 
-      setStatus("Vekio ID created successfully.");
-      router.push(`/dashboard/${slug}`);
+      setStatus("Account created. Check your email to confirm your address before logging in.");
+      router.push("/login?checkEmail=1");
     } catch (error) {
       console.error("Registration error:", error);
       setStatus("Something went wrong. Check the browser console.");
@@ -364,7 +370,24 @@ export default function RegisterPage() {
           
           <div className="field">
             <label>Password</label>
-            <input type="password" placeholder="At least 8 characters" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
+            <div className="password-wrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="At least 8 characters"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="new-password"
+              />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button
