@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     } = body;
 
     const { data, error } = await resend.emails.send({
-      from: "Vekio <onboarding@resend.dev>",
+     from: "Vekio Enquiries <noreply@vekio.com.au>",
       to: tradieEmail,
       subject: `New Vekio enquiry from ${customerName}`,
       html: `
